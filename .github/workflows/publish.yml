@@ -50,3 +50,39 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  update-helm-values:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Use a token with write access (standard GITHUB_TOKEN works if permissions are set)
+          ref: main
+
+      - name: Update Image Tag in values.yaml
+        run: |
+          # Use sed to replace the imageTag line
+          # This assumes imageTag is defined simply as "imageTag: ..."
+          sed -i 's/imageTag: .*/imageTag: sha-${{ github.sha }}/' charts/shopping-microservices/values.yaml
+          
+          # Verify change
+          cat charts/shopping-microservices/values.yaml | grep imageTag
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add charts/shopping-microservices/values.yaml
+          
+          # Only commit if there are changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update image tag to sha-${{ github.sha }} [skip ci]"
+            git push
+          fi

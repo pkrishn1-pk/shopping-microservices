@@ -1,0 +1,23 @@
+# Default values for shopping-microservices.
+
+imageRegistry: ghcr.io/pkrishn1-pk/shopping-microservices
+imageTag: latest
+
+mysql:
+  rootPassword: root
+  storageSize: 1Gi
+
+# List of microservices to deploy
+apps:
+  cart:
+    name: cart-service
+    port: 8081
+    dbName: shopping_cart_db
+  inventory:
+    name: inventory-service
+    port: 8083
+    dbName: shopping_inventory_db
+  order:
+    name: order-service
+    port: 8082
+    dbName: shopping_order_db

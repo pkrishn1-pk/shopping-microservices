@@ -1,0 +1,31 @@
+{{- range $key, $app := .Values.apps }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $app.name }}
+  labels:
+    app: {{ $app.name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ $app.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $app.name }}
+    spec:
+      containers:
+      - name: {{ $app.name }}
+        image: "{{ $.Values.imageRegistry }}/{{ $app.name }}:{{ $.Values.imageTag }}"
+        ports:
+        - containerPort: {{ $app.port }}
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:mysql://mysqldb:3306/{{ $app.dbName }}?createDatabaseIfNotExist=true"
+        - name: SPRING_DATASOURCE_USERNAME
+          value: "root"
+        - name: SPRING_DATASOURCE_PASSWORD
+          value: {{ $.Values.mysql.rootPassword | quote }}
+---
+{{- end }}
