@@ -11,78 +11,151 @@ on:
       - '.github/workflows/publish.yml'
 
 jobs:
-  build-and-push:
+  # JOB 1: Detect which folders changed
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      cart: ${{ steps.filter.outputs.cart }}
+      inventory: ${{ steps.filter.outputs.inventory }}
+      order: ${{ steps.filter.outputs.order }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            cart:
+              - 'cart-service/**'
+            inventory:
+              - 'inventory-service/**'
+            order:
+              - 'order-service/**'
+
+  # JOB 2: Build Cart Service (Only if changed)
+  build-cart:
+    needs: changes
+    if: ${{ needs.changes.outputs.cart == 'true' }}
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       packages: write
-
-    strategy:
-      matrix:
-        service: [cart-service, inventory-service, order-service]
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Log in to the Container registry
-        uses: docker/login-action@v3
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels) for Docker
+      - uses: docker/metadata-action@v5
         id: meta
-        uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}/${{ matrix.service }}
+          images: ghcr.io/${{ github.repository }}/cart-service
           tags: |
             type=sha,format=long
-            type=ref,event=branch
             latest
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v5
         with:
-          context: ./${{ matrix.service }}
-          file: ./${{ matrix.service }}/Dockerfile
+          context: ./cart-service
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
 
+  # JOB 3: Build Inventory Service (Only if changed)
+  build-inventory:
+    needs: changes
+    if: ${{ needs.changes.outputs.inventory == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository }}/inventory-service
+          tags: |
+            type=sha,format=long
+            latest
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./inventory-service
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+
+  # JOB 4: Build Order Service (Only if changed)
+  build-order:
+    needs: changes
+    if: ${{ needs.changes.outputs.order == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ghcr.io/${{ github.repository }}/order-service
+          tags: |
+            type=sha,format=long
+            latest
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./order-service
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+
+  # JOB 5: Update Helm Values
   update-helm-values:
-    needs: build-and-push
+    needs: [changes, build-cart, build-inventory, build-order]
+    # Run if at least one build job ran (or simply always run to ensure sync, checking 'needs' status)
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          # Use a token with write access (standard GITHUB_TOKEN works if permissions are set)
           ref: main
 
-      - name: Update Image Tag in values.yaml
+      - name: Update Image Tags
         run: |
-          # Use sed to replace the imageTag line
-          # This assumes imageTag is defined simply as "imageTag: ..."
-          sed -i 's/imageTag: .*/imageTag: sha-${{ github.sha }}/' charts/shopping-microservices/values.yaml
+          SHA="sha-${{ github.sha }}"
           
-          # Verify change
-          cat charts/shopping-microservices/values.yaml | grep imageTag
+          # Check which services changed and update ONLY their tags
+          if [[ "${{ needs.changes.outputs.cart }}" == "true" ]]; then
+             echo "Updating Cart Tag to $SHA"
+             # Use accurate yq or sed. sed assumes structure.
+             sed -i "/name: cart-service/,/imageTag:/s/imageTag: .*/imageTag: $SHA/" charts/shopping-microservices/values.yaml
+          fi
+          
+          if [[ "${{ needs.changes.outputs.inventory }}" == "true" ]]; then
+             echo "Updating Inventory Tag to $SHA"
+             sed -i "/name: inventory-service/,/imageTag:/s/imageTag: .*/imageTag: $SHA/" charts/shopping-microservices/values.yaml
+          fi
+          
+          if [[ "${{ needs.changes.outputs.order }}" == "true" ]]; then
+             echo "Updating Order Tag to $SHA"
+             sed -i "/name: order-service/,/imageTag:/s/imageTag: .*/imageTag: $SHA/" charts/shopping-microservices/values.yaml
+          fi
+          
+          cat charts/shopping-microservices/values.yaml
 
       - name: Commit and Push changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
           git add charts/shopping-microservices/values.yaml
-          
-          # Only commit if there are changes
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Update image tag to sha-${{ github.sha }} [skip ci]"
+            git commit -m "Update image tags for changed services [skip ci]"
             git push
           fi

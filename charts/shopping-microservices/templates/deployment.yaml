@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: {{ $app.name }}
-        image: "{{ $.Values.imageRegistry }}/{{ $app.name }}:{{ $.Values.imageTag }}"
+        image: "{{ $.Values.imageRegistry }}/{{ $app.name }}:{{ $app.imageTag }}"
         ports:
         - containerPort: {{ $app.port }}
         env:
