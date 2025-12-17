@@ -1,0 +1,21 @@
+# Maven
+target/
+*.jar
+*.war
+*.ear
+mvnw
+mvnw.cmd
+.mvn/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Docker
+docker-compose.override.yml

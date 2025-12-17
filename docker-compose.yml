@@ -1,0 +1,52 @@
+version: '3.8'
+services:
+  cart-service:
+    build: ./cart-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SERVER_PORT=8081
+    networks:
+      - shopping-network
+    depends_on:
+      - mysqldb
+
+  order-service:
+    build: ./order-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SERVER_PORT=8082
+    networks:
+      - shopping-network
+    depends_on:
+      - mysqldb
+
+  inventory-service:
+    build: ./inventory-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SERVER_PORT=8083
+    networks:
+      - shopping-network
+    depends_on:
+      - mysqldb
+
+  mysqldb:
+    image: mysql:8.0
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - shopping-network
+
+networks:
+  shopping-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
