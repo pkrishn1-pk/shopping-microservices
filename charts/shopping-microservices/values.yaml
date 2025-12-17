@@ -1,7 +1,7 @@
 # Default values for shopping-microservices.
 
 imageRegistry: ghcr.io/pkrishn1-pk/shopping-microservices
-imageTag: latest
+imageTag: sha-ec646c5599098ffb0d67d4a87ac8b1abcd308426
 
 mysql:
   rootPassword: root
