@@ -11,14 +11,14 @@ apps:
     name: cart-service
     port: 8081
     dbName: shopping_cart_db
-    imageTag: latest
+    imageTag: sha-dc1ddfe05cb1ca4e2ac813fd0b41f3bb202a3dca
   inventory:
     name: inventory-service
     port: 8083
     dbName: shopping_inventory_db
-    imageTag: latest
+    imageTag: sha-dc1ddfe05cb1ca4e2ac813fd0b41f3bb202a3dca
   order:
     name: order-service
     port: 8082
     dbName: shopping_order_db
-    imageTag: latest
+    imageTag: sha-dc1ddfe05cb1ca4e2ac813fd0b41f3bb202a3dca
