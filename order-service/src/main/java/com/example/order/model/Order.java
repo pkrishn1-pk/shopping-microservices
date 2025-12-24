@@ -10,6 +10,8 @@ public class Order {
     private Long id;
     private Long userId;
     private String status;
+    private double totalAmount;
+    private String itemsDescription;
 
     // Getters and setters
     public Long getId() {
@@ -34,5 +36,21 @@ public class Order {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public double getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(double totalAmount) {
+        this.totalAmount = totalAmount;
+    }
+
+    public String getItemsDescription() {
+        return itemsDescription;
+    }
+
+    public void setItemsDescription(String itemsDescription) {
+        this.itemsDescription = itemsDescription;
     }
 }
